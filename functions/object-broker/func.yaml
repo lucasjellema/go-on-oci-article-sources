@@ -1,0 +1,11 @@
+schema_version: 20180708
+name: object-broker
+version: 0.0.23
+runtime: go
+build_image: fnproject/go:1.15-dev
+run_image: fnproject/go:1.15
+entrypoint: ./func
+triggers:
+- name: object-broker
+  type: http
+  source: /object-broker
