@@ -1,0 +1,95 @@
+version: 0.1
+component: build
+timeoutInSeconds: 6000
+runAs: root
+shell: bash
+env:
+  # these are local variables to the build config
+  variables:
+     SOURCE_DIRECTORY: "myserver-sources"
+
+  # # the value of a vaultVariable is the secret-id (in OCI ID format) stored in the OCI Vault service
+  # you can then access the value of that secret in your build_spec.yaml commands
+  vaultVariables:
+
+  # exportedVariables are made available to use in sucessor stages in this Build Pipeline
+  # For this Build to run, the Build Pipeline needs to have a BUILDRUN_HASH parameter set
+  exportedVariables:
+    - BUILDRUN_HASH
+
+
+steps:
+  - type: Command
+    name: "Export variables"
+    timeoutInSeconds: 40
+    command: |
+      export BUILDRUN_HASH=`echo ${OCI_BUILD_RUN_ID} | rev | cut -c 1-7`
+      echo "BUILDRUN_HASH: " $BUILDRUN_HASH
+      echo "SOURCE-DIRECTORY: " $SOURCE_DIRECTORY
+      echo "${OCI_PRIMARY_SOURCE_DIR}" ${OCI_PRIMARY_SOURCE_DIR}
+      echo "fully qual sources" ${OCI_WORKSPACE_DIR}/${SOURCE_DIRECTORY}
+      echo "myserver-version from build pipeline parameter" ${MYSERVER_VERSION}
+      go version
+
+  - type: Command
+    timeoutInSeconds: 600
+    name: "Install golangci-lint"
+    command: |
+      curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.37.1
+
+  - type: Command
+    timeoutInSeconds: 600
+    name: "Verify golangci-lint version"
+    command: |
+      /root/go/bin/golangci-lint version
+
+
+
+  - type: Command
+    timeoutInSeconds: 600
+    name: "Run go mod tidy for Go Application"
+    command: |
+      go mod tidy
+
+  - type: Command
+    timeoutInSeconds: 600
+    name: "Run go vet for Go Application"
+    command: |
+      go vet .
+
+  - type: Command
+    timeoutInSeconds: 600
+    name: "Run gofmt for Go Application"
+    command: |
+      gofmt -w .
+
+  - type: Command
+    timeoutInSeconds: 600
+    name: "Run Lint for Go Application"
+    command: |
+      /root/go/bin/golangci-lint run
+
+  - type: Command
+    timeoutInSeconds: 600
+    name: "Run Unit Tests for Go Application (with verbose output)"
+    command: |
+      go test -v
+  
+  - type: Command
+    timeoutInSeconds: 600
+    name: "Build Go Application into Executable"
+    command: |
+      go build -o my-server
+
+  - type: Command
+    timeoutInSeconds: 600
+    name: "Zip my-server Application Executable along with website and the wallet for connecting to Oracle Autonomous Database"
+    command: |
+      zip -r my-server.zip website
+      zip -rv my-server.zip my-server
+      zip -rv my-server.zip cwallet.sso
+  
+outputArtifacts:
+  - name: myserver-archive
+    type: BINARY
+    location: ${OCI_WORKSPACE_DIR}/${SOURCE_DIRECTORY}/my-server.zip
