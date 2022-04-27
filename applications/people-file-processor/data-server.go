@@ -57,8 +57,34 @@ func InitializeDataServer(db *sql.DB) error {
 func PeopleJSONProcessor(peopleJson []byte) {
 	var persons []Person
 	json.Unmarshal(peopleJson, &persons)
-	for _, person := range persons {
-		persistPerson(person)
+	nameVals := make([]string, len(persons))
+	ageVals := make([]int, len(persons))
+	descriptionVals := make([]string, len(persons))
+	for i, person := range persons {
+		ageVals[i] = person.Age
+		nameVals[i] = person.Name
+		descriptionVals[i] = person.JuicyDetails
+	}
+	ctx := context.Background()
+
+	tx, err := database.BeginTx(ctx, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tx.Exec(`MERGE INTO PEOPLE t using (select :name name, :age age, :description description from dual) person
+		ON (t.name = person.name )
+		WHEN MATCHED THEN UPDATE SET age = person.age, description = person.description
+		WHEN NOT MATCHED THEN INSERT (t.name, t.age, t.description) values (person.name, person.age, person.description) `,
+		nameVals, ageVals, descriptionVals)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		log.Printf("Merged records into table %s for %d persons", PEOPLE_TABLE_NAME, len(persons))
 	}
 }
 
