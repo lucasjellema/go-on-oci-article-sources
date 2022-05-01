@@ -1,0 +1,15 @@
+FROM alpine:latest
+
+WORKDIR /app
+
+# copy the OCI Configuration file and the associated private key file - note: only for testing the container image locally; 
+# remove these lines before building the image that is pushed to the container image registry 
+COPY config  ./ 
+COPY oci_api_key.pem  ./ 
+
+# add ca-certificates to allow signed communications
+RUN apk --no-cache add ca-certificates
+
+# copy the application's binary executable 
+COPY person-producer  ./ 
+CMD ["./person-producer"]

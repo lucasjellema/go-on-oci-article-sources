@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: personproducer-deployment
+spec:
+  selector:
+    matchLabels:
+      app: personproducer
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: personproducer
+    spec:
+      containers:
+      - name: personproducer
+    # enter the path to your image, be sure to include the correct region prefix    
+        image: iad.ocir.io/idtwlqf2hanz/go-on-oci/person-producer:1.0.13
+        env:
+        - name: INSTANCE_PRINCIPAL_AUTHENTICATION
+          value: "YES"
+        - name: STREAM_DETAILS_SECRET_OCID
+          value: "ocid1.vaultsecret.oc1.iad.amaaaaaa6sde7caa6m5tuweeu3lbz22lf37y2dsbdojnhz2owmgvqgwwnvka"
+      imagePullSecrets:
+    # enter the name of the secret you created  
+      - name: ocirsecret
