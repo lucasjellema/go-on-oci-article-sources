@@ -19,8 +19,8 @@ import (
 var streamDetailsSecretOCID string
 
 type StreamConnectDetails struct {
-	StreamMessagesEndpoint string `json:streamMessagesEndpoint`
-	StreamOCID             string `json:streamOCID`
+	StreamMessagesEndpoint string `json:"streamMessagesEndpoint"`
+	StreamOCID             string `json:"streamOCID"`
 }
 
 func getStreamConnectDetails(ociConfigurationProvider common.ConfigurationProvider) StreamConnectDetails {
@@ -33,18 +33,21 @@ func getStreamConnectDetails(ociConfigurationProvider common.ConfigurationProvid
 	contentDetails := secretResponse.SecretBundleContent.(secrets.Base64SecretBundleContentDetails)
 	decodedSecretContents, _ := b64.StdEncoding.DecodeString(*contentDetails.Content)
 	var streamConnectDetails StreamConnectDetails
-	json.Unmarshal(decodedSecretContents, &streamConnectDetails)
+	err = json.Unmarshal(decodedSecretContents, &streamConnectDetails)
+	if err != nil {
+		fmt.Printf("failed to unmarshal secret : %s", err)
+	}
 	return streamConnectDetails
 }
 
 const MAX_AGE = 90
 
 func getFirstNames() []string {
-	return []string{"Hans", "Brian", "Janet", "Wilma", "Betty", "Daisy", "Caroline", "Karen", "Fonz", "Richard", "Thomas", "Frank", "Doris", "Michael", "Joel", "Taylor"}
+	return []string{"Hans", "Brian", "Janet", "Wilma", "Barry", "Wodan", "Betty", "Daisy", "Caroline", "Karen", "Fonz", "Richard", "Thomas", "Frank", "Doris", "Michael", "Joel", "Taylor"}
 }
 
 func main() {
-	fmt.Println("Welcome to Person Producer from Container - About to publish some person records to the stream")
+	fmt.Println("Welcome to the Person Producer from Deep Down in the Container - About to publish some person records to the stream")
 	streamDetailsSecretOCID = os.Getenv("STREAM_DETAILS_SECRET_OCID")
 	if streamDetailsSecretOCID == "" {
 		fmt.Printf("No value set for environment variable STREAM_DETAILS_SECRET_OCID")
@@ -70,7 +73,7 @@ func main() {
 	}
 	firstNames := getFirstNames()
 	for i := 0; i < 5; i++ {
-		person := Person{Name: getFirstNames()[rand.Intn(len(firstNames))], Age: rand.Intn(MAX_AGE) + 3, JuicyDetails: "created from Person Producer at " + time.Now().String()}
+		person := Person{Name: getFirstNames()[rand.Intn(len(firstNames))], Age: rand.Intn(MAX_AGE) + 3, JuicyDetails: "created from canned Person Producer application at " + time.Now().String()}
 		producePersonMessage(person, streamClient, streamConnectDetails.StreamOCID)
 		time.Sleep(time.Second * 5)
 	}
